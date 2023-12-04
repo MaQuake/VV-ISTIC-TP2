@@ -10,30 +10,40 @@ import com.github.javaparser.utils.SourceRoot;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        if(args.length == 0) {
+        if (args.length == 0) {
             System.err.println("Should provide the path to the source code");
             System.exit(1);
         }
 
-        File file = new File(args[0]);
-        if(!file.exists() || !file.isDirectory() || !file.canRead()) {
+        Path sourcePath = Paths.get(args[0]);
+        if (!sourcePath.toFile().exists() || !sourcePath.toFile().isDirectory() || !sourcePath.toFile().canRead()) {
             System.err.println("Provide a path to an existing readable directory");
             System.exit(2);
         }
 
-        SourceRoot root = new SourceRoot(file.toPath());
-        PublicElementsPrinter printer = new PublicElementsPrinter();
-        root.parse("", (localPath, absolutePath, result) -> {
-            result.ifSuccessful(unit -> unit.accept(printer, null));
-            return SourceRoot.Callback.Result.DONT_SAVE;
-        });
+        // Redirection de la sortie vers un fichier
+        PrintStream originalOut = System.out;
+        PrintStream fileOut = new PrintStream(new File("output.txt"));
+        System.setOut(fileOut);
+
+        try {
+            SourceRoot root = new SourceRoot(sourcePath);
+            PublicElementsPrinter printer = new PublicElementsPrinter();
+            root.parse("", (localPath, absolutePath, result) -> {
+                result.ifSuccessful(unit -> unit.accept(printer, null));
+                return SourceRoot.Callback.Result.DONT_SAVE;
+            });
+        } finally {
+            // Rétablir la sortie standard
+            System.setOut(originalOut);
+            fileOut.close();
+        }
     }
-
-
 }
